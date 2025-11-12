@@ -1,5 +1,5 @@
 // hard-code the backend server
-let backendURL = 'https://image-analysis-server-weld.vercel.app'
+let backendURL = 'https://task-three-backend-des-222-threat-d.vercel.app/'
 
 //-----  Code for accessing the camera -----//
 let width = 320;    // We will scale the photo width to this
