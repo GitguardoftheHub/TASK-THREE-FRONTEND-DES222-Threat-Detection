@@ -19,6 +19,59 @@ let description = document.getElementById('descriptionPanel');
 let cameraPanel = document.getElementById('cameraPanel');
 let photoPanel = document.getElementById('photoPanel');
 
+// Alarm sound state
+let alarmAudioContext = null;
+let alarmOscillator = null;
+let alarmGain = null;
+let isAlarmPlaying = false;
+
+
+function startAlarm() {
+    // Avoid starting multiple alarms
+    if (isAlarmPlaying) return;
+    
+    try {
+        // Create or resume audio context
+        if (!alarmAudioContext) {
+            alarmAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        
+        if (alarmAudioContext.state === 'suspended') {
+            alarmAudioContext.resume();
+        }
+        
+        // Create oscillator for continuous tone
+        alarmOscillator = alarmAudioContext.createOscillator();
+        alarmGain = alarmAudioContext.createGain();
+        
+        alarmOscillator.type = 'sine';
+        alarmOscillator.frequency.setValueAtTime(1000, alarmAudioContext.currentTime); // 1000 Hz tone
+        alarmGain.gain.setValueAtTime(0.3, alarmAudioContext.currentTime); // Set volume to 30% to avoid damage
+        
+        alarmOscillator.connect(alarmGain);
+        alarmGain.connect(alarmAudioContext.destination);
+        alarmOscillator.start();
+        
+        isAlarmPlaying = true;
+        console.log('Alarm started');
+    } catch (err) {
+        console.error('Failed to start alarm:', err.message);
+    }
+}
+
+function stopAlarm() {
+    if (isAlarmPlaying && alarmOscillator) {
+        try {
+            alarmOscillator.stop();
+            alarmOscillator = null;
+            isAlarmPlaying = false;
+            console.log('Alarm stopped');
+        } catch (err) {
+            console.error('Failed to stop alarm:', err.message);
+        }
+    }
+}
+
 
 function clearphoto() {
     const context = canvas.getContext("2d");
@@ -57,6 +110,15 @@ async function takepicture() {
             console.log(json);
             imageDescription.textContent = json['description'];
             showPhotoView();
+            
+            // Start alarm based on backend result
+            // Trigger alarm if the backend indicates a threat/issue
+            if (json['description'] && json['description'].toLowerCase().includes('threat')) {
+                startAlarm();
+            } else if (json['alert'] || json['threat'] || json['danger']) {
+                // Also check for explicit threat/alert/danger flags
+                startAlarm();
+            }
 
         } catch (error) {
             console.error(error.message);
@@ -175,6 +237,9 @@ requestButton.addEventListener(
 
 
 homeButton.addEventListener('click', async (event) => {
+    // Stop alarm when Retake is pressed
+    stopAlarm();
+    
     showLiveCameraView();
 
     // If camera not already streaming, set it up; otherwise just capture.
