@@ -16,6 +16,8 @@ let imageDescription = document.getElementById('imageDescription');
 let homeNav = document.getElementById('homeNav');
 let homeButton = document.getElementById('homeButton');
 let description = document.getElementById('descriptionPanel');
+let cameraPanel = document.getElementById('cameraPanel');
+let photoPanel = document.getElementById('photoPanel');
 
 
 function clearphoto() {
@@ -67,23 +69,36 @@ async function takepicture() {
 
 
 async function setupCameraExample() {
+    // Request camera stream and wait until the video can play before resolving.
     let stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
     video.srcObject = stream;
     video.play();
-    video.addEventListener(
-        "canplay",
-        (ev) => {
+
+    // Wait for the video to be ready (canplay) so width/height are available.
+    await new Promise((resolve) => {
+        const onCanPlay = () => {
             if (!streaming) {
-                width = video.videoWidth;
-                height = video.videoHeight;
-                videoAspectRatio = video.videoWidth / video.videoHeight;
+                width = video.videoWidth || width;
+                height = video.videoHeight || height;
+                if (video.videoWidth && video.videoHeight) {
+                    videoAspectRatio = video.videoWidth / video.videoHeight;
+                }
                 resizeCameraExample();
                 streaming = true;
             }
-        },
-        false,
-    );
-    
+            video.removeEventListener('canplay', onCanPlay);
+            resolve();
+        };
+
+        video.addEventListener('canplay', onCanPlay, false);
+
+        // Fallback: resolve after a short timeout in case 'canplay' doesn't fire quickly.
+        setTimeout(() => {
+            video.removeEventListener('canplay', onCanPlay);
+            resolve();
+        }, 1500);
+    });
+
     clearphoto();
     window.addEventListener('resize', resizeCameraExample);
 
@@ -145,13 +160,35 @@ takePhotoButton.addEventListener(
 requestButton.addEventListener(
     "click",
     async (ev) => {
+        ev.preventDefault();
+        // Start camera and auto-capture once ready.
         await setupCameraExample();
         requestButton.setAttribute('style', 'display: none;');
         cameraPanel.setAttribute('style', 'display: flex;');
+
+        // Small delay to ensure a video frame is painted, then capture automatically.
+        setTimeout(() => {
+            takepicture();
+        }, 250);
     }
 );
 
 
-homeButton.addEventListener('click', (event) => {
+homeButton.addEventListener('click', async (event) => {
     showLiveCameraView();
+
+    // If camera not already streaming, set it up; otherwise just capture.
+    if (!streaming) {
+        try {
+            await setupCameraExample();
+        } catch (err) {
+            console.error('Failed to restart camera', err.message || err);
+            return;
+        }
+    }
+
+    // Small delay to ensure a video frame is painted, then capture automatically.
+    setTimeout(() => {
+        takepicture();
+    }, 250);
 });
