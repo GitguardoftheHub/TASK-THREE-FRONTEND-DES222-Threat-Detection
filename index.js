@@ -72,6 +72,26 @@ function stopAlarm() {
     }
 }
 
+// Determine whether the backend response should be considered a threat.
+function isThreatResponse(json) {
+    if (!json) return false;
+
+    // Accept explicit boolean-like flags from backend (boolean or common string values)
+    const explicitTrue = (v) => v === true || v === 'true' || v === 'True' || v === 'yes' || v === '1';
+
+    if (explicitTrue(json.hasThreat) || explicitTrue(json.isThreat) || explicitTrue(json.alert) || explicitTrue(json.threat) || explicitTrue(json.danger)) {
+        return true;
+    }
+
+    // Check description text for focused keywords (use word boundaries to reduce false positives)
+    if (typeof json.description === 'string') {
+        const threatPattern = /\b(threat|danger|weapon|violence|attack|hazard|risk|unsafe|explosive|gun|knife|bomb)\b/i;
+        return threatPattern.test(json.description);
+    }
+
+    return false;
+}
+
 
 function clearphoto() {
     const context = canvas.getContext("2d");
@@ -111,13 +131,12 @@ async function takepicture() {
             imageDescription.textContent = json['description'];
             showPhotoView();
             
-            // Start alarm based on backend result
-            // Trigger alarm if the backend indicates a threat/issue
-            if (json['description'] && json['description'].toLowerCase().includes('threat')) {
+            // Decide whether to alarm based on backend response
+            if (isThreatResponse(json)) {
                 startAlarm();
-            } else if (json['alert'] || json['threat'] || json['danger']) {
-                // Also check for explicit threat/alert/danger flags
-                startAlarm();
+            } else {
+                // Ensure any previously-playing alarm is stopped for non-threat responses
+                stopAlarm();
             }
 
         } catch (error) {
