@@ -72,11 +72,18 @@ function stopAlarm() {
     }
 }
 
-// Determine whether the backend response should be considered a threat.
+// Determine whether the backend response contains a confirmed threat alert command.
+// The backend only sends a 'THREAT_ALERT' command when a genuine threat is detected.
 function isThreatResponse(json) {
     if (!json) return false;
 
-    // Accept explicit boolean-like flags from backend (boolean or common string values)
+    // Check for explicit threat alert command from backend
+    // This is the primary way to detect confirmed threats
+    if (json.command && json.command.type === 'THREAT_ALERT' && json.command.action === 'activate_audio_alert') {
+        return true;
+    }
+
+    // Fallback: Accept explicit boolean-like flags from backend (boolean or common string values)
     const explicitTrue = (v) => v === true || v === 'true' || v === 'True' || v === 'yes' || v === '1';
 
     if (explicitTrue(json.hasThreat) || explicitTrue(json.isThreat) || explicitTrue(json.alert) || explicitTrue(json.threat) || explicitTrue(json.danger)) {
