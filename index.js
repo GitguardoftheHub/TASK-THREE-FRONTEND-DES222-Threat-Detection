@@ -257,7 +257,7 @@ requestButton.addEventListener(
         // Small delay to ensure a video frame is painted, then capture automatically.
         setTimeout(() => {
             takepicture();
-        }, 250);
+        }, 50);
     }
 );
 
@@ -281,5 +281,5 @@ homeButton.addEventListener('click', async (event) => {
     // Small delay to ensure a video frame is painted, then capture automatically.
     setTimeout(() => {
         takepicture();
-    }, 250);
+    }, 50);
 });
